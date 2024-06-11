@@ -10,6 +10,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.ResponseEntity;
 
@@ -17,10 +18,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 @Service
 public class ShippingRateService {
+    private final Logger logger = Logger.getLogger(ShippingRateService.class.getName());
     private final RestTemplate restTemplate = new RestTemplate();
+    private String token;
+    private String cookies;
 
     public List<ShippingRateResponse> getShippingRates(ShippingRateRequest request) {
         List<ShippingRateResponse> rates = new ArrayList<>();
@@ -67,7 +72,7 @@ public class ShippingRateService {
 
         // Create a Map to hold the request parameters
         Map<String, Object> params = new HashMap<>();
-        params.put("_token", "iOQObcPflw4pKk4VerNQ0JVuZf7MNry1DlYkVUol");
+        params.put("_token", token);
         params.put("shipping_rates_type", "domestic");
         params.put("sender_postcode", request.getSenderPostcode());
         params.put("receiver_postcode", request.getReceiverPostcode());
@@ -80,11 +85,23 @@ public class ShippingRateService {
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Requested-With", "XMLHttpRequest");
-        headers.set("Cookie", "jt_express_malaysia_session=eyJpdiI6InU5NHN4SmppUUJXRkY2RFQxZ2ZpbFE9PSIsInZhbHVlIjoiSUlGc0QwT3RBZTVHaStqc3Z5UHFzYVNQaW1oSU1pRFFZaUVHRmlhVEo3a0R6RTFGRmpxNmxWaHoyTGRaVFNBdmo3MHVKQ0VZOVh5OXlLRkxTWUpGUWlZenJvSEJ1V2syRTZUUUdNUkZGazhEVURIZFNHZTlGRHF6bGZhbzhFTnkiLCJtYWMiOiJmNTU1MjIxNzA4NThiMmYyNjJjNjA5MWM4YzE5MjZhNjNmYTE2ZTczMDU1ZThkYzhkZmEyNDg3ZjgwNDQzOTNiIn0%3D; Path=/; HttpOnly; Expires=Tue, 11 Jun 2024 11:54:26 GMT;jt_express_malaysia_session=eyJpdiI6InU5NHN4SmppUUJXRkY2RFQxZ2ZpbFE9PSIsInZhbHVlIjoiSUlGc0QwT3RBZTVHaStqc3Z5UHFzYVNQaW1oSU1pRFFZaUVHRmlhVEo3a0R6RTFGRmpxNmxWaHoyTGRaVFNBdmo3MHVKQ0VZOVh5OXlLRkxTWUpGUWlZenJvSEJ1V2syRTZUUUdNUkZGazhEVURIZFNHZTlGRHF6bGZhbzhFTnkiLCJtYWMiOiJmNTU1MjIxNzA4NThiMmYyNjJjNjA5MWM4YzE5MjZhNjNmYTE2ZTczMDU1ZThkYzhkZmEyNDg3ZjgwNDQzOTNiIn0%3D; Path=/; HttpOnly; Expires=Tue, 11 Jun 2024 11:54:26 GMT;");
+        headers.set("Cookie", cookies);
 
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(params, headers);
 
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+        ResponseEntity<String> response = null;
+
+        try {
+            response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode().is4xxClientError()) {
+                retrieveCookiesAndToken();
+                headers.set("Cookie", cookies);
+                params.put("_token", token); // Update token in the request params
+                entity = new HttpEntity<>(params, headers);
+                response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+            }
+        }
 
         if (response.getStatusCode().is2xxSuccessful()) {
             try {
@@ -98,5 +115,28 @@ public class ShippingRateService {
         }
 
         return new ShippingRateResponse("jt", 0);
+    }
+
+    private void retrieveCookiesAndToken() {
+        String url = "https://www.jtexpress.my/shipping-rates"; // JT Express website URL
+
+        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+
+        // Extract cookies from headers
+        List<String> setCookieList = response.getHeaders().get("Set-Cookie");
+        if (setCookieList != null && !setCookieList.isEmpty()) {
+            cookies = String.join("; ", setCookieList);
+            logger.info("Cookies: " + cookies);
+        }
+
+        // Extract token from URL
+        try {
+            Document doc = Jsoup.parse(response.getBody());
+            String tokenElement = doc.select("input[name=_token]").first().val();
+            token = tokenElement;
+            logger.info("Token: " + token);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
