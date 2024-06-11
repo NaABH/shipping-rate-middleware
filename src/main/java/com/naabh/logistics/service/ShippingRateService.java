@@ -6,6 +6,9 @@ import com.naabh.logistics.model.ShippingRateRequest;
 import com.naabh.logistics.model.ShippingRateResponse;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +25,7 @@ public class ShippingRateService {
     public List<ShippingRateResponse> getShippingRates(ShippingRateRequest request) {
         List<ShippingRateResponse> rates = new ArrayList<>();
         rates.add(getCitylinkRate(request));
-//        rates.add(getJTRate(request));
+        rates.add(getJTRate(request));
         return rates;
     }
 
@@ -59,32 +62,41 @@ public class ShippingRateService {
         return new ShippingRateResponse("citylink", 0);
     }
 
-//    private ShippingRateResponse getJTRate(ShippingRateRequest request) {
-//        String url = String.format(
-//                "https://www.jtexpress.my/shipping-rates?_token=iOQObcPflw4pKk4VerNQ0JVuZf7MNry1DlYkVUol&shipping_rates_type=domestic&sender_postcode=%s&receiver_postcode=%s&destination_country=%s&shipping_type=%s&weight=%.2f&length=%.2f&width=%.2f&height=%.2f&item_value",
-//                request.getSenderPostcode(),
-//                request.getReceiverPostcode(),
-//                request.getReceiverCountry(),
-//                request.getJtShippingType(),
-//                request.getWeight(),
-//                request.getLength(),
-//                request.getWidth(),
-//                request.getHeight()
-//        );
-//
-//        ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
-//
-//        if (response.getStatusCode().is2xxSuccessful()) {
-//            try {
-//                Document doc = Jsoup.parse(response.getBody());
-//                String rateStr = doc.select("div.table-responsive.d-block.d-sm-none > table > tbody > tr:nth-child(2) > td:nth-child(2)").text().trim();
-//                double rate = Double.parseDouble(rateStr);
-//                return new ShippingRateResponse("jt", rate);
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//        }
-//
-//        return new ShippingRateResponse("jt", 0);
-//    }
+    private ShippingRateResponse getJTRate(ShippingRateRequest request) {
+        String url = "https://www.jtexpress.my/shipping-rates";
+
+        // Create a Map to hold the request parameters
+        Map<String, Object> params = new HashMap<>();
+        params.put("_token", "iOQObcPflw4pKk4VerNQ0JVuZf7MNry1DlYkVUol");
+        params.put("shipping_rates_type", "domestic");
+        params.put("sender_postcode", request.getSenderPostcode());
+        params.put("receiver_postcode", request.getReceiverPostcode());
+        params.put("destination_country", request.getReceiverCountry());
+        params.put("shipping_type", request.getJtShippingType());
+        params.put("weight", request.getWeight());
+        params.put("length", request.getLength());
+        params.put("width", request.getWidth());
+        params.put("height", request.getHeight());
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Requested-With", "XMLHttpRequest");
+        headers.set("Cookie", "jt_express_malaysia_session=eyJpdiI6InU5NHN4SmppUUJXRkY2RFQxZ2ZpbFE9PSIsInZhbHVlIjoiSUlGc0QwT3RBZTVHaStqc3Z5UHFzYVNQaW1oSU1pRFFZaUVHRmlhVEo3a0R6RTFGRmpxNmxWaHoyTGRaVFNBdmo3MHVKQ0VZOVh5OXlLRkxTWUpGUWlZenJvSEJ1V2syRTZUUUdNUkZGazhEVURIZFNHZTlGRHF6bGZhbzhFTnkiLCJtYWMiOiJmNTU1MjIxNzA4NThiMmYyNjJjNjA5MWM4YzE5MjZhNjNmYTE2ZTczMDU1ZThkYzhkZmEyNDg3ZjgwNDQzOTNiIn0%3D; Path=/; HttpOnly; Expires=Tue, 11 Jun 2024 11:54:26 GMT;jt_express_malaysia_session=eyJpdiI6InU5NHN4SmppUUJXRkY2RFQxZ2ZpbFE9PSIsInZhbHVlIjoiSUlGc0QwT3RBZTVHaStqc3Z5UHFzYVNQaW1oSU1pRFFZaUVHRmlhVEo3a0R6RTFGRmpxNmxWaHoyTGRaVFNBdmo3MHVKQ0VZOVh5OXlLRkxTWUpGUWlZenJvSEJ1V2syRTZUUUdNUkZGazhEVURIZFNHZTlGRHF6bGZhbzhFTnkiLCJtYWMiOiJmNTU1MjIxNzA4NThiMmYyNjJjNjA5MWM4YzE5MjZhNjNmYTE2ZTczMDU1ZThkYzhkZmEyNDg3ZjgwNDQzOTNiIn0%3D; Path=/; HttpOnly; Expires=Tue, 11 Jun 2024 11:54:26 GMT;");
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(params, headers);
+
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
+
+        if (response.getStatusCode().is2xxSuccessful()) {
+            try {
+                Document doc = Jsoup.parse(response.getBody());
+                String rateStr = doc.select("div.table-responsive.d-block.d-sm-none > table > tbody > tr:nth-child(4) > td:nth-child(2)").text().trim();
+                double rate = Double.parseDouble(rateStr);
+                return new ShippingRateResponse("jt", rate);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        return new ShippingRateResponse("jt", 0);
+    }
 }
