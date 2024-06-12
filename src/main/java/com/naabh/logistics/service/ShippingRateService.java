@@ -6,6 +6,7 @@ import com.naabh.logistics.model.ShippingRateRequest;
 import com.naabh.logistics.model.ShippingRateResponse;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -24,13 +25,35 @@ import java.util.logging.Logger;
 public class ShippingRateService {
     private final Logger logger = Logger.getLogger(ShippingRateService.class.getName());
     private final RestTemplate restTemplate = new RestTemplate();
+//    @Autowired
+//    private ShippingRateCacheRepository shippingRateCacheRepository;
     private String token;
     private String cookies;
 
     public List<ShippingRateResponse> getShippingRates(ShippingRateRequest request) {
         List<ShippingRateResponse> rates = new ArrayList<>();
-        rates.add(getCitylinkRate(request));
-        rates.add(getJTRate(request));
+
+//        // Check if the request is in the cache
+//        ShippingRateCache cachedRate = shippingRateCacheRepository.findCachedRate(request.getSenderPostcode(), request.getReceiverPostcode(), request.getWeight(), request.getLength(), request.getWidth(), request.getHeight());
+//        if (cachedRate != null) {
+//            // If the request is in the cache, return the cached response
+//            rates.add(new ShippingRateResponse(cachedRate.getProvider(), cachedRate.getRate()));
+//        } else {
+            // If the request is not in the cache, call the APIs
+            ShippingRateResponse citylinkRate = getCitylinkRate(request);
+            ShippingRateResponse jtRate = getJTRate(request);
+            rates.add(citylinkRate);
+            rates.add(jtRate);
+
+//            // Store the new request-response pair in the cache
+//            ShippingRateCache newRate = new ShippingRateCache();
+//            // Set all the fields in newRate based on request and citylinkRate
+//            shippingRateCacheRepository.save(newRate);
+//            newRate = new ShippingRateCache();
+//            // Set all the fields in newRate based on request and jtRate
+//            shippingRateCacheRepository.save(newRate);
+//        }
+
         return rates;
     }
 

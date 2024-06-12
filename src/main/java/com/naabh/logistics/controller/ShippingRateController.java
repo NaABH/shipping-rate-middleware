@@ -13,8 +13,11 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api")
 public class ShippingRateController {
-    @Autowired
     private ShippingRateService shippingRateService;
+
+    public ShippingRateController(ShippingRateService shippingRateService) {
+        this.shippingRateService = shippingRateService;
+    }
 
     @PostMapping("/rates")
     public Map<String, List<ShippingRateResponse>> getShippingRates(@RequestBody ShippingRateRequest request) {

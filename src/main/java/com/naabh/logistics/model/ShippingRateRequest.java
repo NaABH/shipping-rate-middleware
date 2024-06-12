@@ -10,9 +10,13 @@ public class ShippingRateRequest {
     private String shippingType = "1";
     private String jtShippingType = "EZ";
     private double weight;
-    private double length;
-    private double width;
-    private double height;
+    private int length;
+    private int width;
+    private int height;
+
+    public void setShippingRateRequest(int width) {
+        this.width = width;
+    }
 
     public void setSenderState(String senderState) {
         this.senderState = senderState;
@@ -34,11 +38,11 @@ public class ShippingRateRequest {
         this.weight = weight;
     }
 
-    public void setLength(double length) {
+    public void setLength(int length) {
         this.length = length;
     }
 
-    public void setHeight(double height) {
+    public void setHeight(int height) {
         this.height = height;
     }
 
@@ -78,15 +82,15 @@ public class ShippingRateRequest {
         return weight;
     }
 
-    public double getLength() {
+    public int getLength() {
         return length;
     }
 
-    public double getHeight() {
+    public int getHeight() {
         return height;
     }
 
-    public double getWidth() {
+    public int getWidth() {
         return width;
     }
 }
